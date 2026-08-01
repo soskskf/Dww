@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hacked by Abyssic</title>
     <style>
-        /* Estilo general oscuro y amenazante */
         * {
             margin: 0;
             padding: 0;
@@ -22,6 +21,7 @@
             color: #00ff41;
             text-shadow: 0 0 10px #00ff41;
             padding: 20px;
+            cursor: pointer; /* Indica que se puede hacer clic */
         }
 
         .container {
@@ -33,9 +33,13 @@
             box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
             max-width: 600px;
             width: 100%;
+            pointer-events: none; /* Permite que el clic pase al body */
         }
 
-        /* Texto principal con efecto glitch */
+        .container * {
+            pointer-events: auto; /* Los botones siguen funcionando */
+        }
+
         .hacked-text {
             font-size: 4rem;
             font-weight: bold;
@@ -61,11 +65,6 @@
             100% { text-shadow: 2px 0 red, -2px 0 blue; }
         }
 
-        /* Reproductor */
-        .player {
-            margin-top: 20px;
-        }
-
         .player input[type="text"] {
             width: 100%;
             padding: 12px 15px;
@@ -82,10 +81,6 @@
         .player input[type="text"]:focus {
             border-color: #00ff41;
             box-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
-        }
-
-        .player input[type="text"]::placeholder {
-            color: #006622;
         }
 
         .controls {
@@ -117,10 +112,6 @@
             box-shadow: 0 0 30px #00ff41;
         }
 
-        .controls button:active {
-            transform: scale(0.95);
-        }
-
         .status {
             margin-top: 15px;
             font-size: 0.9rem;
@@ -128,7 +119,6 @@
             min-height: 1.5em;
         }
 
-        /* Responsive */
         @media (max-width: 500px) {
             .hacked-text {
                 font-size: 2.5rem;
@@ -142,19 +132,17 @@
 <body>
 
     <div class="container">
-        <!-- Texto principal -->
         <div class="hacked-text">Hacked by Abyssic</div>
         <div class="subtext">// system compromised //</div>
 
-        <!-- Reproductor de audio -->
         <div class="player">
-            <input type="text" id="audioUrl" placeholder="Pega aquí el enlace del audio (MP3, WAV, OGG...)" value="https://files.catbox.moe/pnkxoi.mp3">
+            <input type="text" id="audioUrl" placeholder="Pega aquí el enlace del audio" value="https://files.catbox.moe/pnkxoi.mp3">
             <div class="controls">
                 <button id="playBtn">▶ Reproducir</button>
                 <button id="pauseBtn">⏸ Pausa</button>
                 <button id="stopBtn">⏹ Detener</button>
             </div>
-            <div id="status" class="status">Listo para reproducir</div>
+            <div id="status" class="status">⏳ Cargando audio...</div>
         </div>
     </div>
 
@@ -167,83 +155,104 @@
             const pauseBtn = document.getElementById('pauseBtn');
             const stopBtn = document.getElementById('stopBtn');
 
-            // Cargar y reproducir
-            function loadAndPlay(url) {
+            const AUDIO_URL = "https://files.catbox.moe/pnkxoi.mp3";
+            let autoPlayAttempted = false;
+            let clickListener = null;
+
+            // Función principal para reproducir
+            function playAudio(url) {
                 if (!url || url.trim() === '') {
-                    statusDiv.textContent = '⚠️ Ingresa una URL válida';
+                    statusDiv.textContent = '⚠️ URL inválida';
                     return false;
                 }
-                // Si el audio ya tiene una fuente diferente, la cambiamos
                 if (audio.src !== url) {
                     audio.src = url;
                     audio.load();
                 }
-                audio.play()
+                return audio.play()
                     .then(() => {
-                        statusDiv.textContent = '▶ Reproduciendo...';
+                        statusDiv.textContent = '▶ Reproduciendo automáticamente...';
+                        return true;
                     })
                     .catch(err => {
-                        statusDiv.textContent = '❌ Error al reproducir: ' + err.message;
+                        // Si falla por autoplay, mostramos mensaje
+                        if (err.name === 'NotAllowedError') {
+                            statusDiv.textContent = '🔊 Haz clic en la pantalla para reproducir';
+                        } else {
+                            statusDiv.textContent = '❌ Error: ' + err.message;
+                        }
+                        return false;
                     });
-                return true;
             }
 
-            // Evento para cuando termina la reproducción
-            audio.addEventListener('ended', () => {
-                statusDiv.textContent = '⏹ Reproducción finalizada';
-            });
+            // Intentar reproducción automática al cargar
+            function tryAutoPlay() {
+                if (autoPlayAttempted) return;
+                autoPlayAttempted = true;
 
-            // Evento para errores de carga
-            audio.addEventListener('error', (e) => {
-                statusDiv.textContent = '❌ Error al cargar el audio. Verifica la URL.';
-            });
+                const url = urlInput.value.trim() || AUDIO_URL;
+                playAudio(url).then(success => {
+                    if (!success) {
+                        // Si falla, esperamos un clic del usuario en cualquier parte
+                        if (!clickListener) {
+                            clickListener = function() {
+                                // Al hacer clic, reproducimos y eliminamos el listener
+                                playAudio(urlInput.value.trim() || AUDIO_URL);
+                                document.removeEventListener('click', clickListener);
+                                clickListener = null;
+                            };
+                            document.addEventListener('click', clickListener);
+                        }
+                    }
+                });
+            }
 
-            // Botón reproducir
-            playBtn.addEventListener('click', () => {
-                const url = urlInput.value.trim();
-                if (url) {
-                    loadAndPlay(url);
-                } else {
-                    statusDiv.textContent = '⚠️ No has pegado ningún enlace';
+            // Botón Reproducir (manual)
+            playBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Evita que el clic en el botón dispare el listener global
+                const url = urlInput.value.trim() || AUDIO_URL;
+                playAudio(url);
+                // Si había un listener de clic pendiente, lo quitamos porque ya se interactuó
+                if (clickListener) {
+                    document.removeEventListener('click', clickListener);
+                    clickListener = null;
                 }
             });
 
-            // Botón pausa
-            pauseBtn.addEventListener('click', () => {
+            pauseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 if (!audio.paused) {
                     audio.pause();
                     statusDiv.textContent = '⏸ Pausado';
-                } else {
-                    statusDiv.textContent = '⚠️ No hay audio reproduciéndose';
                 }
             });
 
-            // Botón detener (para y vuelve al inicio)
-            stopBtn.addEventListener('click', () => {
+            stopBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 audio.pause();
                 audio.currentTime = 0;
                 statusDiv.textContent = '⏹ Detenido';
             });
 
-            // También se puede reproducir al presionar Enter en el input
             urlInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     playBtn.click();
                 }
             });
 
-            // Cargar un audio de ejemplo al iniciar (si el input tiene valor)
+            // Precargar audio y lanzar autoplay al cargar la página
             window.addEventListener('load', () => {
-                const initialUrl = urlInput.value.trim();
-                if (initialUrl) {
-                    // Pre-cargamos pero no reproducimos automáticamente
-                    audio.src = initialUrl;
-                    audio.load();
-                    statusDiv.textContent = '🔊 Audio cargado. Presiona "Reproducir".';
-                }
+                const initialUrl = urlInput.value.trim() || AUDIO_URL;
+                audio.src = initialUrl;
+                audio.load();
+                statusDiv.textContent = '🔊 Intentando reproducción automática...';
+                // Pequeño retraso para asegurar que el audio esté listo
+                setTimeout(tryAutoPlay, 300);
             });
+
+            // Si el usuario hace clic en el body (fuera de los botones) y el autoplay no se ha hecho,
+            // el listener global lo capturará.
         })();
     </script>
-
 </body>
 </html>
