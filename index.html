@@ -20,111 +20,62 @@
             font-family: 'Courier New', monospace;
             color: #00ff41;
             text-shadow: 0 0 10px #00ff41;
-            padding: 20px;
-            cursor: pointer; /* Indica que se puede hacer clic */
+            cursor: pointer;
+            user-select: none;
         }
 
         .container {
             text-align: center;
-            background: #111;
-            padding: 50px 40px;
-            border: 2px solid #00ff41;
-            border-radius: 12px;
-            box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
-            max-width: 600px;
-            width: 100%;
-            pointer-events: none; /* Permite que el clic pase al body */
-        }
-
-        .container * {
-            pointer-events: auto; /* Los botones siguen funcionando */
+            padding: 20px;
         }
 
         .hacked-text {
-            font-size: 4rem;
+            font-size: 5rem;
             font-weight: bold;
-            letter-spacing: 6px;
+            letter-spacing: 8px;
             text-transform: uppercase;
             animation: glitch 1.5s infinite;
-            margin-bottom: 10px;
+            line-height: 1.2;
         }
 
         .subtext {
             font-size: 1.2rem;
             color: #00cc33;
-            margin-bottom: 30px;
-            opacity: 0.8;
-            letter-spacing: 2px;
+            margin-top: 15px;
+            opacity: 0.7;
+            letter-spacing: 3px;
+            animation: pulse 2s infinite;
         }
 
         @keyframes glitch {
-            0% { text-shadow: 2px 0 red, -2px 0 blue; }
-            25% { text-shadow: -2px 0 red, 2px 0 blue; }
-            50% { text-shadow: 2px 2px red, -2px -2px blue; }
-            75% { text-shadow: -2px 2px red, 2px -2px blue; }
-            100% { text-shadow: 2px 0 red, -2px 0 blue; }
+            0% { text-shadow: 3px 0 red, -3px 0 blue; }
+            25% { text-shadow: -3px 0 red, 3px 0 blue; }
+            50% { text-shadow: 3px 3px red, -3px -3px blue; }
+            75% { text-shadow: -3px 3px red, 3px -3px blue; }
+            100% { text-shadow: 3px 0 red, -3px 0 blue; }
         }
 
-        .player input[type="text"] {
-            width: 100%;
-            padding: 12px 15px;
-            background: #1a1a1a;
-            border: 1px solid #00ff41;
-            border-radius: 6px;
-            color: #00ff41;
-            font-size: 1rem;
-            font-family: inherit;
-            outline: none;
-            transition: 0.3s;
-        }
-
-        .player input[type="text"]:focus {
-            border-color: #00ff41;
-            box-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
-        }
-
-        .controls {
-            display: flex;
-            gap: 12px;
-            margin-top: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .controls button {
-            background: transparent;
-            border: 1px solid #00ff41;
-            color: #00ff41;
-            padding: 10px 25px;
-            font-size: 1.1rem;
-            font-family: inherit;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-weight: bold;
-        }
-
-        .controls button:hover {
-            background: #00ff41;
-            color: #0a0a0a;
-            box-shadow: 0 0 30px #00ff41;
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
         }
 
         .status {
-            margin-top: 15px;
+            margin-top: 30px;
             font-size: 0.9rem;
-            color: #00cc33;
-            min-height: 1.5em;
+            color: #006622;
+            letter-spacing: 1px;
+            transition: 0.5s;
         }
 
-        @media (max-width: 500px) {
+        .status.active {
+            color: #00ff41;
+        }
+
+        @media (max-width: 600px) {
             .hacked-text {
-                font-size: 2.5rem;
-            }
-            .container {
-                padding: 30px 20px;
+                font-size: 2.8rem;
+                letter-spacing: 4px;
             }
         }
     </style>
@@ -134,125 +85,50 @@
     <div class="container">
         <div class="hacked-text">Hacked by Abyssic</div>
         <div class="subtext">// system compromised //</div>
-
-        <div class="player">
-            <input type="text" id="audioUrl" placeholder="Pega aquí el enlace del audio" value="https://files.catbox.moe/pnkxoi.mp3">
-            <div class="controls">
-                <button id="playBtn">▶ Reproducir</button>
-                <button id="pauseBtn">⏸ Pausa</button>
-                <button id="stopBtn">⏹ Detener</button>
-            </div>
-            <div id="status" class="status">⏳ Cargando audio...</div>
-        </div>
+        <div id="status" class="status">🔊 Haz clic en la pantalla para activar el sonido</div>
     </div>
 
     <script>
         (function() {
-            const audio = new Audio();
-            const urlInput = document.getElementById('audioUrl');
             const statusDiv = document.getElementById('status');
-            const playBtn = document.getElementById('playBtn');
-            const pauseBtn = document.getElementById('pauseBtn');
-            const stopBtn = document.getElementById('stopBtn');
-
+            const audio = new Audio();
             const AUDIO_URL = "https://files.catbox.moe/pnkxoi.mp3";
-            let autoPlayAttempted = false;
-            let clickListener = null;
 
-            // Función principal para reproducir
-            function playAudio(url) {
-                if (!url || url.trim() === '') {
-                    statusDiv.textContent = '⚠️ URL inválida';
-                    return false;
-                }
-                if (audio.src !== url) {
-                    audio.src = url;
-                    audio.load();
-                }
-                return audio.play()
+            let played = false;
+
+            // Precargar el audio
+            audio.src = AUDIO_URL;
+            audio.load();
+
+            function playAudio() {
+                if (played) return;
+                audio.play()
                     .then(() => {
-                        statusDiv.textContent = '▶ Reproduciendo automáticamente...';
-                        return true;
+                        played = true;
+                        statusDiv.textContent = '▶ Sonido activo';
+                        statusDiv.classList.add('active');
                     })
                     .catch(err => {
-                        // Si falla por autoplay, mostramos mensaje
-                        if (err.name === 'NotAllowedError') {
-                            statusDiv.textContent = '🔊 Haz clic en la pantalla para reproducir';
-                        } else {
-                            statusDiv.textContent = '❌ Error: ' + err.message;
-                        }
-                        return false;
+                        statusDiv.textContent = '❌ Error: ' + err.message;
                     });
             }
 
-            // Intentar reproducción automática al cargar
-            function tryAutoPlay() {
-                if (autoPlayAttempted) return;
-                autoPlayAttempted = true;
+            // Al hacer clic en cualquier parte, reproduce
+            document.addEventListener('click', playAudio);
 
-                const url = urlInput.value.trim() || AUDIO_URL;
-                playAudio(url).then(success => {
-                    if (!success) {
-                        // Si falla, esperamos un clic del usuario en cualquier parte
-                        if (!clickListener) {
-                            clickListener = function() {
-                                // Al hacer clic, reproducimos y eliminamos el listener
-                                playAudio(urlInput.value.trim() || AUDIO_URL);
-                                document.removeEventListener('click', clickListener);
-                                clickListener = null;
-                            };
-                            document.addEventListener('click', clickListener);
-                        }
-                    }
-                });
-            }
+            // También al tocar en móviles
+            document.addEventListener('touchstart', playAudio);
 
-            // Botón Reproducir (manual)
-            playBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Evita que el clic en el botón dispare el listener global
-                const url = urlInput.value.trim() || AUDIO_URL;
-                playAudio(url);
-                // Si había un listener de clic pendiente, lo quitamos porque ya se interactuó
-                if (clickListener) {
-                    document.removeEventListener('click', clickListener);
-                    clickListener = null;
-                }
-            });
-
-            pauseBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (!audio.paused) {
-                    audio.pause();
-                    statusDiv.textContent = '⏸ Pausado';
-                }
-            });
-
-            stopBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                audio.pause();
+            // Si el audio termina, lo reiniciamos para que suene en bucle
+            audio.addEventListener('ended', () => {
                 audio.currentTime = 0;
-                statusDiv.textContent = '⏹ Detenido';
+                audio.play().catch(() => {});
             });
 
-            urlInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    playBtn.click();
-                }
-            });
-
-            // Precargar audio y lanzar autoplay al cargar la página
-            window.addEventListener('load', () => {
-                const initialUrl = urlInput.value.trim() || AUDIO_URL;
-                audio.src = initialUrl;
-                audio.load();
-                statusDiv.textContent = '🔊 Intentando reproducción automática...';
-                // Pequeño retraso para asegurar que el audio esté listo
-                setTimeout(tryAutoPlay, 300);
-            });
-
-            // Si el usuario hace clic en el body (fuera de los botones) y el autoplay no se ha hecho,
-            // el listener global lo capturará.
+            // Mensaje inicial
+            statusDiv.textContent = '🔊 Haz clic en la pantalla para activar el sonido';
         })();
     </script>
+
 </body>
 </html>
